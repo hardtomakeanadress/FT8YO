@@ -12,7 +12,6 @@ import static com.bg7yoz.ft8cn.GeneralVariables.QUERY_FREQ_TIMEOUT;
 import static com.bg7yoz.ft8cn.GeneralVariables.START_QUERY_FREQ_DELAY;
 
 import android.os.Handler;
-import android.os.SystemClock;
 import android.util.Log;
 
 import com.bg7yoz.ft8cn.Ft8Message;
@@ -39,15 +38,8 @@ public class TrUSDXRig extends BaseRig {
     private static final String TAG = "TrUSDXRig";
     private static final int rxSampling = 7812;
     private static final int txSampling = 11520;
-    private static final long STREAM_RETRY_MILLIS = 2000;
-    private static final long TX_TO_RX_DRAIN_MILLIS = 100;
     private final TrUSDXStreamParser streamParser = new TrUSDXStreamParser();
     private final ByteArrayOutputStream rxStreamBuffer = new ByteArrayOutputStream();
-    private volatile boolean connectionSeen = false;
-    private volatile long lastAudioReceivedAt = 0;
-    private volatile long lastStreamRequestAt = 0;
-    private int receiveRecoveryAttempts = 0;
-    private final Object transmitAudioLock = new Object();
     private final TrUSDXStreamParser.Listener streamListener = new TrUSDXStreamParser.Listener() {
         @Override
         public void onCommand(byte[] command) {
@@ -56,9 +48,6 @@ public class TrUSDXRig extends BaseRig {
 
         @Override
         public void onAudio(byte[] data, boolean force) {
-            if (data.length > 0) {
-                TrUSDXDiagnostics.audio(data);
-            }
             onReceivedWaveData(data, force);
         }
     };
@@ -75,26 +64,19 @@ public class TrUSDXRig extends BaseRig {
             public void run() {
                 try {
                     if (!isConnected()) {
-                        // USB permission and port opening can take longer than the initial
-                        // two-second delay. Keep the timer alive so stream startup is retried
-                        // after the connector actually becomes ready.
-                        if (connectionSeen && readFreqTimer != null) {
-                            readFreqTimer.cancel();
-                            readFreqTimer.purge();
-                            readFreqTimer = null;
-                        }
+                        readFreqTimer.cancel();
+                        readFreqTimer.purge();
+                        readFreqTimer = null;
                         return;
                     }
-                    connectionSeen = true;
                     if (isPttOn()) {
                         clearBufferData();
                     } else {
-                        requestReceiveStreamingIfNeeded();
+                        readFreqFromRig();//读频率
                     }
 
                 } catch (Exception e) {
                     Log.e(TAG, "readFreq error:" + e.getMessage());
-                    TrUSDXDiagnostics.exception("periodic stream/frequency task failed", e);
                 }
             }
         };
@@ -107,63 +89,16 @@ public class TrUSDXRig extends BaseRig {
         streamParser.clearCommandBuffer();
     }
 
-    private void requestReceiveStreamingIfNeeded() {
-        long now = System.currentTimeMillis();
-        boolean audioIsFlowing = lastAudioReceivedAt != 0
-                && now - lastAudioReceivedAt < STREAM_RETRY_MILLIS * 2;
-        if (audioIsFlowing || now - lastStreamRequestAt < STREAM_RETRY_MILLIS) {
-            return;
-        }
-        if (getConnector() != null && getConnector().isConnected()) {
-            // The first RX command after TX terminates the radio's incoming TX-audio
-            // stream. Some firmware builds need another complete, standalone RX command
-            // before their receive DSP starts producing samples again. This is the same
-            // recovery action the original FT8CN implementation repeated, but only while
-            // actual audio is absent so it cannot fragment a healthy receive stream.
-            streamParser.reset();
-            rxStreamBuffer.reset();
-            getConnector().sendData(KenwoodTK90RigConstant.recoverTrUSDXReceive());
-            receiveRecoveryAttempts++;
-            TrUSDXDiagnostics.receiveRecovery(
-                    "triple RX retry " + receiveRecoveryAttempts);
-            lastStreamRequestAt = now;
-        }
-    }
-
     @Override
     public void setPTT(boolean on) {
-        if (on) {
-            // Do not start a new transmission until any previous audio writer has exited.
-            synchronized (transmitAudioLock) {
-                // Lock acquisition is the required barrier.
-            }
-        }
         super.setPTT(on);
         if (getConnector() != null) {
             switch (getControlMode()) {
                 case ControlMode.CAT:
                     if (on) {
                         streamParser.stopStreaming();
-                        getConnector().setPttOn(
-                                KenwoodTK90RigConstant.setTrUSDXPTTState(true));
-                    } else {
-                        // Mark PTT off first so the writer cancels, then keep the lock
-                        // through the drain interval and RX command. A new TX cannot race
-                        // ahead of receive recovery.
-                        synchronized (transmitAudioLock) {
-                            // The working (tr)uSDX host driver leaves a short idle period
-                            // after the final audio byte so the radio can drain its UART.
-                            SystemClock.sleep(TX_TO_RX_DRAIN_MILLIS);
-                            streamParser.reset();
-                            rxStreamBuffer.reset();
-                            getConnector().setPttOn(
-                                    KenwoodTK90RigConstant.recoverTrUSDXReceive());
-                            markReceiveStreamForRestart();
-                            lastStreamRequestAt = System.currentTimeMillis();
-                            TrUSDXDiagnostics.receiveRecovery(
-                                    "post-TX 100ms drain + triple RX");
-                        }
                     }
+                    getConnector().setPttOn(KenwoodTK90RigConstant.setTrUSDXPTTState(on));
                     break;
                 case ControlMode.RTS:
                 case ControlMode.DTR:
@@ -185,7 +120,6 @@ public class TrUSDXRig extends BaseRig {
     public void setUsbModeToRig() {
         if (getConnector() != null) {
             getConnector().sendData(KenwoodTK90RigConstant.setTS590OperationUSBMode());
-            markReceiveStreamForRestart();
         }
     }
 
@@ -193,7 +127,6 @@ public class TrUSDXRig extends BaseRig {
     public void setFreqToRig() {
         if (getConnector() != null) {
             getConnector().sendData(KenwoodTK90RigConstant.setTS590OperationFreq(getFreq()));
-            markReceiveStreamForRestart();
         }
     }
 
@@ -206,19 +139,11 @@ public class TrUSDXRig extends BaseRig {
     }
 
     private void handleCommand(byte[] commandData) {
-        String rawCommand = new String(commandData, StandardCharsets.US_ASCII);
-        if (rawCommand.startsWith("US")) {
-            TrUSDXDiagnostics.parsedCommand(commandData);
-        }
         Yaesu3Command command = Yaesu3Command.getCommand(
-                rawCommand);
+                new String(commandData, StandardCharsets.US_ASCII));
         if (command == null) {
-            if (!rawCommand.startsWith("US")) {
-                TrUSDXDiagnostics.unknownCommand(commandData);
-            }
             return;
         }
-        TrUSDXDiagnostics.parsedCommand(commandData);
 
         String commandId = command.getCommandID();
         if (commandId.equalsIgnoreCase("FA")) {//频率
@@ -253,14 +178,11 @@ public class TrUSDXRig extends BaseRig {
 
     @Override
     public void readFreqFromRig() {
-        // CAT commands interrupt (tr)uSDX audio. The app already knows the frequency it set,
-        // so polling it every two seconds only starves the decoder of continuous samples.
-    }
-
-    private void markReceiveStreamForRestart() {
-        lastAudioReceivedAt = 0;
-        lastStreamRequestAt = 0;
-        receiveRecoveryAttempts = 0;
+        if (getConnector() != null) {
+            // force reset
+            getConnector().sendData(KenwoodTK90RigConstant.setTrUSDXPTTState(false));
+            getConnector().sendData(KenwoodTK90RigConstant.setTS590ReadOperationFreq());
+        }
     }
 
     @Override
@@ -278,14 +200,6 @@ public class TrUSDXRig extends BaseRig {
         if (getConnector() != null) {
             streamParser.reset();
             getConnector().sendData(KenwoodTK90RigConstant.setTrUSDXStreaming(false));
-        }
-        lastAudioReceivedAt = 0;
-        lastStreamRequestAt = 0;
-        receiveRecoveryAttempts = 0;
-        if (readFreqTimer != null) {
-            readFreqTimer.cancel();
-            readFreqTimer.purge();
-            readFreqTimer = null;
         }
     }
 
@@ -318,14 +232,10 @@ public class TrUSDXRig extends BaseRig {
 
         rxStreamBuffer.write(data, 0, data.length);
         if (rxStreamBuffer.size() >= 256 || force) {//8位转16位，7812Hz转12000Hz
-            int inputBytes = rxStreamBuffer.size();
             //byte[] resampled = rxResample.processCopy(toWaveSamples8To16(rxStreamBuffer.toByteArray()));
             float[] resampled = FT8Resample.get32Resample16(
                     toWaveSamples8To16Int(rxStreamBuffer.toByteArray()), rxSampling, 12000, 1);
             rxStreamBuffer.reset();
-            lastAudioReceivedAt = System.currentTimeMillis();
-            receiveRecoveryAttempts = 0;
-            TrUSDXDiagnostics.resampled(inputBytes, resampled.length);
             getConnector().receiveWaveData(resampled);
         }
         //rxResample.close();
@@ -357,28 +267,18 @@ public class TrUSDXRig extends BaseRig {
 //        byte[] pcm8 = toWaveSamples16To8(resampled);
 
         byte[] pcm8 = FT8Resample.get8Resample32(wave, 24000, txSampling, 1);
-        TrUSDXDiagnostics.transmitAudioPrepared(pcm8, GeneralVariables.volumePercent);
 
 
         for (int i = 0; i < pcm8.length; i++) {
             if (pcm8[i] == 0x3B) pcm8[i] = 0x3A; // ; to :
         }
-        synchronized (transmitAudioLock) {
-            boolean completed = false;
-            while (pcm8.length > 0 && isPttOn()) {
-                if (pcm8.length <= 256) {
-                    getConnector().sendData(pcm8);
-                    completed = true;
-                    break;
-                } else {
-                    getConnector().sendData(Arrays.copyOfRange(pcm8, 0, 256));
-                    pcm8 = Arrays.copyOfRange(pcm8, 256, pcm8.length);
-                }
-            }
-            if (completed) {
-                TrUSDXDiagnostics.transmitAudioCompleted();
-            } else if (pcm8.length > 0 && !isPttOn()) {
-                TrUSDXDiagnostics.transmitAudioCancelled(pcm8.length);
+        while (pcm8.length > 0) {
+            if (pcm8.length <= 256) {
+                getConnector().sendData(pcm8);
+                break;
+            } else {
+                getConnector().sendData(Arrays.copyOfRange(pcm8, 0, 256));
+                pcm8 = Arrays.copyOfRange(pcm8, 256, pcm8.length);
             }
         }
     }
@@ -465,7 +365,6 @@ public class TrUSDXRig extends BaseRig {
                     //改成设置usb模式
                     getConnector().sendData(KenwoodTK90RigConstant.setTS590OperationUSBMode());
                     getConnector().sendData(KenwoodTK90RigConstant.setTrUSDXStreaming(true));
-                    lastStreamRequestAt = System.currentTimeMillis();
                 }
             }
         }, START_QUERY_FREQ_DELAY - 500);

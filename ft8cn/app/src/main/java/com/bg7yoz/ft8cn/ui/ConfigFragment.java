@@ -36,7 +36,6 @@ import com.bg7yoz.ft8cn.ft8signal.FT8Package;
 import com.bg7yoz.ft8cn.log.ThirdPartyService;
 import com.bg7yoz.ft8cn.maidenhead.MaidenheadGrid;
 import com.bg7yoz.ft8cn.rigs.InstructionSet;
-import com.bg7yoz.ft8cn.rigs.TrUSDXDiagnostics;
 import com.bg7yoz.ft8cn.timer.UtcTimer;
 
 import java.io.IOException;
@@ -1655,17 +1654,6 @@ public class ConfigFragment extends Fragment {
                         GeneralVariables.clearCache(binding.getRoot().getContext());
                     }
                 }).start();
-            }
-        });
-
-        binding.shareUsbDiagnosticButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                try {
-                    TrUSDXDiagnostics.share(requireContext());
-                } catch (Exception e) {
-                    ToastMessage.show("Unable to share USB diagnostic: " + e.getMessage());
-                }
             }
         });
 

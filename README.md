@@ -1,33 +1,22 @@
 # FT8YO — fixed (tr)uSDX Android app
 
-## [⬇️ DOWNLOAD FT8YO (tr)uSDX TIMED-RX FIX 11](https://raw.githubusercontent.com/hardtomakeanadress/FT8YO/main/downloads/FT8YO-0.93-trUSDX-timed-rx-fix11-debug.apk)
+## [⬇️ DOWNLOAD FT8YO (tr)uSDX BASELINE PARSER FIX 12](https://raw.githubusercontent.com/hardtomakeanadress/FT8YO/main/downloads/FT8YO-0.93-trUSDX-baseline-parser-fix12-debug.apk)
 
-Fixed build: `FT8YO-0.93-trUSDX-timed-rx-fix11-debug.apk`
+Fixed build: `FT8YO-0.93-trUSDX-baseline-parser-fix12-debug.apk`
 
-This version applies the official `(tr)uSDX` USB serial requirements: 115200
-baud, 8N1, DTR high, RTS low, and the documented `UA2;` speaker-off streaming
-command. It also retries streaming after permission/connection startup and
-includes the fragmented stream-marker fix.
+This version returns the radio path to the known-working upstream FT8CN 0.93
+implementation and changes only its broken fragmented `US` stream-marker
+parser. It removes the experimental serial overrides, continuous-stream
+changes, retry sequences, transmit locks, and receive timing added in Fixes
+2–11.
 
-USB audio over CAT requires `(tr)uSDX` firmware 2.00u or newer. This build
-installs alongside the original FT8CN app and updates either earlier FT8YO fix
-build.
+Before connecting the phone, set `(tr)uSDX` Menu 2.4 **Semi-QSK = OFF**, Mode
+**USB**, Filter BW **4k0**, and use firmware R2.00x or newer. Semi-QSK OFF is
+required by the official USB-audio driver and is also the setting that resolved
+the original FT8CN issue. Fully power-cycle the radio after changing it.
 
-This diagnostic build records the USB device and driver, permission flow,
-serial settings and control-line readback, CAT commands and reply previews,
-stream markers, audio byte counts, resampler delivery, and exceptions. Let it
-receive for at least 15 seconds, open **Settings**, then tap
-**Share USB diagnostic** to attach the generated text report to an issue.
-
-Fix 6 uses the uploaded diagnostic evidence: the old receive loop sent a
-malformed `;RX;` command and an `FA;` query every two seconds, repeatedly
-interrupting CAT audio and starving the decoder. Receive now leaves the stream
-continuous and only restarts it after a real radio-setting change.
-
-Fix 11 follows the working `(tr)uSDX` Linux audio driver's transmit shutdown:
-it leaves 100 ms for the serial audio buffer to drain, then sends three
-back-to-back `RX` commands. Recovery retries stop immediately when real audio
-resumes.
+This build installs alongside the original FT8CN app and updates earlier FT8YO
+fix builds.
 
 ---
 
