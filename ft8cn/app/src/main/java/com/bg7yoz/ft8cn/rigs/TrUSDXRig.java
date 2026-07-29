@@ -44,6 +44,7 @@ public class TrUSDXRig extends BaseRig {
     private volatile boolean connectionSeen = false;
     private volatile long lastAudioReceivedAt = 0;
     private volatile long lastStreamRequestAt = 0;
+    private int consecutiveStreamRequests = 0;
     private final Object transmitAudioLock = new Object();
     private final TrUSDXStreamParser.Listener streamListener = new TrUSDXStreamParser.Listener() {
         @Override
@@ -54,7 +55,6 @@ public class TrUSDXRig extends BaseRig {
         @Override
         public void onAudio(byte[] data, boolean force) {
             if (data.length > 0) {
-                lastAudioReceivedAt = System.currentTimeMillis();
                 TrUSDXDiagnostics.audio(data);
             }
             onReceivedWaveData(data, force);
@@ -113,7 +113,17 @@ public class TrUSDXRig extends BaseRig {
             return;
         }
         if (getConnector() != null && getConnector().isConnected()) {
-            getConnector().sendData(KenwoodTK90RigConstant.setTrUSDXStreaming(true));
+            if (consecutiveStreamRequests >= 2) {
+                streamParser.reset();
+                rxStreamBuffer.reset();
+                getConnector().sendData(KenwoodTK90RigConstant.resetTrUSDXReceiveStreaming());
+                consecutiveStreamRequests = 0;
+                TrUSDXDiagnostics.receiveRecovery("hard UA0/RX/UA2 reset");
+            } else {
+                getConnector().sendData(KenwoodTK90RigConstant.setTrUSDXStreaming(true));
+                consecutiveStreamRequests++;
+                TrUSDXDiagnostics.receiveRecovery("UA2 retry " + consecutiveStreamRequests);
+            }
             lastStreamRequestAt = now;
         }
     }
@@ -139,8 +149,18 @@ public class TrUSDXRig extends BaseRig {
                 case ControlMode.CAT:
                     if (on) {
                         streamParser.stopStreaming();
+                        getConnector().setPttOn(
+                                KenwoodTK90RigConstant.setTrUSDXPTTState(true));
+                    } else {
+                        streamParser.reset();
+                        rxStreamBuffer.reset();
+                        getConnector().setPttOn(
+                                KenwoodTK90RigConstant.resetTrUSDXReceiveStreaming());
+                        markReceiveStreamForRestart();
+                        lastStreamRequestAt = System.currentTimeMillis();
+                        TrUSDXDiagnostics.receiveRecovery(
+                                "post-TX UA0/RX/UA2 reset");
                     }
-                    getConnector().setPttOn(KenwoodTK90RigConstant.setTrUSDXPTTState(on));
                     break;
                 case ControlMode.RTS:
                 case ControlMode.DTR:
@@ -237,6 +257,7 @@ public class TrUSDXRig extends BaseRig {
     private void markReceiveStreamForRestart() {
         lastAudioReceivedAt = 0;
         lastStreamRequestAt = 0;
+        consecutiveStreamRequests = 0;
     }
 
     @Override
@@ -257,6 +278,7 @@ public class TrUSDXRig extends BaseRig {
         }
         lastAudioReceivedAt = 0;
         lastStreamRequestAt = 0;
+        consecutiveStreamRequests = 0;
         if (readFreqTimer != null) {
             readFreqTimer.cancel();
             readFreqTimer.purge();
@@ -298,6 +320,8 @@ public class TrUSDXRig extends BaseRig {
             float[] resampled = FT8Resample.get32Resample16(
                     toWaveSamples8To16Int(rxStreamBuffer.toByteArray()), rxSampling, 12000, 1);
             rxStreamBuffer.reset();
+            lastAudioReceivedAt = System.currentTimeMillis();
+            consecutiveStreamRequests = 0;
             TrUSDXDiagnostics.resampled(inputBytes, resampled.length);
             getConnector().receiveWaveData(resampled);
         }

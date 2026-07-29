@@ -58,6 +58,19 @@ public class TrUSDXStreamParserTest {
         assertFalse(parser.isStreaming());
     }
 
+    @Test
+    public void duplicateStreamMarkerIsNotDeliveredAsAudio() {
+        TrUSDXStreamParser parser = new TrUSDXStreamParser();
+        RecordingListener listener = new RecordingListener();
+
+        parser.accept(ascii("USUS"), listener);
+
+        assertEquals(1, listener.commands.size());
+        assertArrayEquals(ascii("US"), listener.commands.get(0));
+        assertEquals(0, listener.audio.size());
+        assertTrue(parser.isStreaming());
+    }
+
     private static byte[] ascii(String value) {
         return value.getBytes(StandardCharsets.US_ASCII);
     }

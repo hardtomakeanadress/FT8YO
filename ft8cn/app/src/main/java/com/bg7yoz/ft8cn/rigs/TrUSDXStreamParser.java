@@ -53,7 +53,11 @@ final class TrUSDXStreamParser {
         } else if (commandBuffer.size() == 0 && isStreamCommand(remainder)) {
             streaming = true;
             listener.onCommand(Arrays.copyOf(remainder, 2));
-            listener.onAudio(Arrays.copyOfRange(remainder, 2, remainder.length), false);
+            // Some firmware emits US twice when UA2 both enables and resumes streaming.
+            // The second marker is framing, not two audio samples.
+            if (!isDuplicateStreamMarker(remainder)) {
+                listener.onAudio(Arrays.copyOfRange(remainder, 2, remainder.length), false);
+            }
         } else {
             commandBuffer.write(remainder, 0, remainder.length);
         }
@@ -99,5 +103,13 @@ final class TrUSDXStreamParser {
         return data.length >= 2
                 && data[0] == STREAM_COMMAND_FIRST
                 && data[1] == STREAM_COMMAND_SECOND;
+    }
+
+    private static boolean isDuplicateStreamMarker(byte[] data) {
+        return data.length == 4
+                && data[0] == STREAM_COMMAND_FIRST
+                && data[1] == STREAM_COMMAND_SECOND
+                && data[2] == STREAM_COMMAND_FIRST
+                && data[3] == STREAM_COMMAND_SECOND;
     }
 }

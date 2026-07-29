@@ -21,7 +21,7 @@ android {
         applicationId "com.bg7yoz.ft8cn"
         minSdk 23
         targetSdk 33
-        versionCode 8
+        versionCode 9
         versionName '0.93'
 
 
@@ -42,7 +42,7 @@ android {
 
         debug{
             applicationIdSuffix ".trusdxfix"
-            versionNameSuffix "-trusdx-safe-tx-fix8"
+            versionNameSuffix "-trusdx-rx-recovery-fix9"
             buildConfigField("String", "apkBuildTime", "\"${currentTime}\"")
         }
         release {

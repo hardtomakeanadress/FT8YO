@@ -179,6 +179,10 @@ public final class TrUSDXDiagnostics {
         event("TX AUDIO", "cancelled before RX command; unsent=" + unsentBytes + " B");
     }
 
+    public static synchronized void receiveRecovery(String action) {
+        event("RX RECOVERY", safe(action));
+    }
+
     public static synchronized void received(byte[] data) {
         if (data == null || data.length == 0) {
             return;

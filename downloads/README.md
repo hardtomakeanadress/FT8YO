@@ -1,6 +1,6 @@
 # FT8YO fixed Android app
 
-Download **FT8YO-0.93-trUSDX-safe-tx-fix8-debug.apk** from this
+Download **FT8YO-0.93-trUSDX-rx-recovery-fix9-debug.apk** from this
 directory.
 
 This build enforces the official `(tr)uSDX` USB serial settings: 115200 baud,
@@ -19,10 +19,10 @@ report.
 
 The uploaded reports proved that USB audio reaches the decoder. This build
 keeps continuous receive, prevents transmit audio from continuing after an
-early stop, and records the generated transmit level in the diagnostic report.
+early stop, and fully resets the radio's receive streamer after each TX.
 
 SHA-256:
 
 ```text
-5ee796fffcacf3714c0f9720fc326b20c41ace9f53f53842ca8eca29172bf195
+f1a930b598733815849ffa8e9faadfc86ea93c11feb5333401523b673dbf1ba0
 ```
