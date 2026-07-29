@@ -11,7 +11,7 @@ alongside the original FT8CN app.
 
 Set `(tr)uSDX` Menu 2.4 **Semi-QSK = OFF**, Mode **USB**, Filter BW **4k0**,
 then fully power-cycle the radio before connecting the phone. Use firmware
-R2.00x or newer.
+R2.00u or newer, including R2.00x.
 
 SHA-256:
 

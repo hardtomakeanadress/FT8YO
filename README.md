@@ -11,12 +11,17 @@ changes, retry sequences, transmit locks, and receive timing added in Fixes
 2–11.
 
 Before connecting the phone, set `(tr)uSDX` Menu 2.4 **Semi-QSK = OFF**, Mode
-**USB**, Filter BW **4k0**, and use firmware R2.00x or newer. Semi-QSK OFF is
-required by the official USB-audio driver and is also the setting that resolved
-the original FT8CN issue. Fully power-cycle the radio after changing it.
+**USB**, Filter BW **4k0**, and use firmware R2.00u or newer, including R2.00x.
+Semi-QSK OFF is required by the official USB-audio driver and is also the
+setting that resolved the original FT8CN issue. Fully power-cycle the radio
+after changing it.
 
 This build installs alongside the original FT8CN app and updates earlier FT8YO
 fix builds.
+
+For the complete cause, required radio settings, discarded experiments, and
+verification details, see
+**[Verified (tr)uSDX USB-audio fix](TRUSDX_FIX.md)**.
 
 ---
 
