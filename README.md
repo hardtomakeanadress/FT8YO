@@ -1,11 +1,12 @@
 # FT8YO — fixed (tr)uSDX Android app
 
-## [⬇️ DOWNLOAD THE FIXED FT8YO APK](https://raw.githubusercontent.com/hardtomakeanadress/FT8YO/main/downloads/FT8YO-0.93-trUSDX-fix-debug.apk)
+## [⬇️ DOWNLOAD THE FIXED FT8YO APK (UA1 FIX 2)](https://raw.githubusercontent.com/hardtomakeanadress/FT8YO/main/downloads/FT8YO-0.93-trUSDX-UA1-fix2-debug.apk)
 
-Fixed build: `FT8YO-0.93-trUSDX-fix-debug.apk`
+Fixed build: `FT8YO-0.93-trUSDX-UA1-fix2-debug.apk`
 
-This build includes the fragmented `(tr)uSDX` stream-marker fix and installs
-alongside the original FT8CN app.
+This version enables receive streaming with the firmware-compatible `UA1;`
+command and includes the fragmented `(tr)uSDX` stream-marker fix. It installs
+alongside the original FT8CN app and updates the earlier FT8YO fix build.
 
 ---
 

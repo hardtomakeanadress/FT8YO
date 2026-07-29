@@ -161,7 +161,10 @@ public class KenwoodTK90RigConstant {
     //2023-08-16 由DS1UFX提交修改（基于0.9版），增加(tr)uSDX audio over cat的支持。
     public static byte[] setTrUSDXStreaming(boolean on) {
         if (on) {
-            return TRUSDX_STREAMING_ON_SPEAKER_OFF.getBytes();
+            // UA1 is the portable CAT_STREAMING enable command. Some firmware variants
+            // accept UA2 as "stream with speaker off", but standard (tr)uSDX firmware
+            // treats every value other than 1 as disabled.
+            return TRUSDX_STREAMING_ON_SPEAKER_ON.getBytes();
         } else {
             return TRUSDX_STREAMING_OFF.getBytes();
         }
