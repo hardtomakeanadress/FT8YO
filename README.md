@@ -1,9 +1,20 @@
+# FT8YO — fixed (tr)uSDX Android app
+
+## [⬇️ DOWNLOAD THE FIXED FT8YO APK](https://raw.githubusercontent.com/hardtomakeanadress/FT8YO/main/downloads/FT8YO-0.93-trUSDX-fix-debug.apk)
+
+Fixed build: `FT8YO-0.93-trUSDX-fix-debug.apk`
+
+This build includes the fragmented `(tr)uSDX` stream-marker fix and installs
+alongside the original FT8CN app.
+
+---
+
 # FT8CN
 Developed by BG7YOZ and hosted by N0BOY
 
 Run FT8 natively on Android
 
-Check [Releases](https://github.com/N0BOY/FT8CN/releases) to download the latest apk file.
+Download the fixed app using the FT8YO link at the top of this page.
 
 ```
 免责声明：
