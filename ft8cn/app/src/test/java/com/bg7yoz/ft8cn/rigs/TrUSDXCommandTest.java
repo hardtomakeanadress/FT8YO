@@ -35,10 +35,4 @@ public class TrUSDXCommandTest {
                 KenwoodTK90RigConstant.setTrUSDXPTTState(false));
     }
 
-    @Test
-    public void receiveRecoveryResetsStreamingAndReceiverBeforeRestart() {
-        assertArrayEquals(
-                ";UA0;RX;UA2;".getBytes(StandardCharsets.US_ASCII),
-                KenwoodTK90RigConstant.resetTrUSDXReceiveStreaming());
-    }
 }

@@ -175,8 +175,4 @@ public class KenwoodTK90RigConstant {
         }
     }
 
-    public static byte[] resetTrUSDXReceiveStreaming() {
-        return ";UA0;RX;UA2;".getBytes();
-    }
-
 }
