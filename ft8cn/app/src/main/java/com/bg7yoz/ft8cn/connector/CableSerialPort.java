@@ -23,6 +23,7 @@ import com.bg7yoz.ft8cn.BuildConfig;
 import com.bg7yoz.ft8cn.GeneralVariables;
 import com.bg7yoz.ft8cn.R;
 import com.bg7yoz.ft8cn.rigs.InstructionSet;
+import com.bg7yoz.ft8cn.rigs.TrUSDXDiagnostics;
 import com.bg7yoz.ft8cn.serialport.CdcAcmSerialDriver;
 import com.bg7yoz.ft8cn.serialport.UsbSerialDriver;
 import com.bg7yoz.ft8cn.serialport.UsbSerialPort;
@@ -30,8 +31,10 @@ import com.bg7yoz.ft8cn.serialport.UsbSerialProber;
 import com.bg7yoz.ft8cn.serialport.util.SerialInputOutputManager;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.Locale;
 
 
 public class CableSerialPort {
@@ -69,6 +72,9 @@ public class CableSerialPort {
         baudRate = baud;
         context = mContext;
         this.onStateChanged=connectorStateChanged;
+        if (isTrUSDX()) {
+            TrUSDXDiagnostics.initialize(context, vendorId, portNum);
+        }
         doBroadcast();
     }
 
@@ -99,9 +105,15 @@ public class CableSerialPort {
         usbConnection = null;
         //此处是不是做个权限判断？
         if (usbManager == null) {
+            if (isTrUSDX()) {
+                TrUSDXDiagnostics.error("Android UsbManager is unavailable");
+            }
             return false;
         }
 
+        if (isTrUSDX()) {
+            TrUSDXDiagnostics.usbInventory(usbManager.getDeviceList().size());
+        }
 
         for (UsbDevice v : usbManager.getDeviceList().values()) {
             if (v.getVendorId() == vendorId) {
@@ -110,16 +122,38 @@ public class CableSerialPort {
         }
         if (device == null) {
             Log.e(TAG, String.format("串口设备打开失败: 没有找到设备0x%04x", vendorId));
+            if (isTrUSDX()) {
+                TrUSDXDiagnostics.error(String.format(Locale.US,
+                        "No attached USB device matched vendor 0x%04X", vendorId));
+            }
             return false;
+        }
+        if (isTrUSDX()) {
+            String productName;
+            try {
+                productName = device.getProductName();
+            } catch (SecurityException e) {
+                productName = "permission required";
+            }
+            TrUSDXDiagnostics.deviceFound(device.getVendorId(), device.getProductId(),
+                    device.getDeviceName(), productName);
         }
         driver = UsbSerialProber.getDefaultProber().probeDevice(device);
         if (driver == null) {
             //试着把未知的设备加入到cdc驱动上
             driver = new CdcAcmSerialDriver(device);
         }
-        if (driver.getPorts().size() < portNum) {
+        if (driver.getPorts().size() <= portNum) {
             Log.e(TAG, "串口号不存在，无法打开。");
+            if (isTrUSDX()) {
+                TrUSDXDiagnostics.error("Selected USB port " + portNum
+                        + " does not exist; driver port count=" + driver.getPorts().size());
+            }
             return false;
+        }
+        if (isTrUSDX()) {
+            TrUSDXDiagnostics.driverSelected(driver.getClass().getSimpleName(), portNum,
+                    driver.getPorts().size());
         }
         Log.d(TAG, "connect: port size:" + String.valueOf(driver.getPorts().size()));
         usbSerialPort = driver.getPorts().get(portNum);
@@ -144,6 +178,9 @@ public class CableSerialPort {
         if (usbConnection == null && usbPermission == UsbPermission.Unknown
                 && !usbManager.hasPermission(driver.getDevice())) {
             usbPermission = UsbPermission.Requested;
+            if (isTrUSDX()) {
+                TrUSDXDiagnostics.permission("requested");
+            }
 
             PendingIntent usbPermissionIntent;
 
@@ -166,6 +203,10 @@ public class CableSerialPort {
             prepare();
         }
         if (usbConnection == null) {
+            if (isTrUSDX()) {
+                TrUSDXDiagnostics.permission(usbPermission == UsbPermission.Denied
+                        ? "denied" : "device could not be opened");
+            }
             if (onStateChanged!=null){
                 onStateChanged.onRunError(GeneralVariables.getStringFromResource(R.string.serial_connect_no_access));
             }
@@ -174,6 +215,10 @@ public class CableSerialPort {
         }
         try {
             usbSerialPort.open(usbConnection);
+            if (isTrUSDX()) {
+                TrUSDXDiagnostics.permission("granted");
+                TrUSDXDiagnostics.portOpened();
+            }
             //波特率、停止位
             //usbSerialPort.setParameters(baudRate, 8, 1, UsbSerialPort.PARITY_NONE);
             Log.d(TAG,String.format("serial:baud rate：%d,data bits:%d,stop bits:%d,parity bit:%d"
@@ -184,6 +229,7 @@ public class CableSerialPort {
                 // DL2MAN's (tr)uSDX CAT-streaming specification requires
                 // 115200 baud, 8N1, DTR high and RTS low in receive.
                 usbSerialPort.setParameters(115200, 8, 1, UsbSerialPort.PARITY_NONE);
+                TrUSDXDiagnostics.serialConfigured();
                 configureTrUSDXControlLines();
             } else {
                 usbSerialPort.setParameters(baudRate, GeneralVariables.serialDataBits
@@ -192,6 +238,9 @@ public class CableSerialPort {
             usbIoManager = new SerialInputOutputManager(usbSerialPort, new SerialInputOutputManager.Listener() {
                 @Override
                 public void onNewData(byte[] data) {
+                    if (isTrUSDX()) {
+                        TrUSDXDiagnostics.received(data);
+                    }
                     if (ioListener != null) {
                         ioListener.onNewData(data);
                     }
@@ -199,6 +248,9 @@ public class CableSerialPort {
 
                 @Override
                 public void onRunError(Exception e) {
+                    if (isTrUSDX()) {
+                        TrUSDXDiagnostics.exception("USB I/O manager stopped", e);
+                    }
                     if (ioListener != null) {
                         ioListener.onRunError(e);
                     }
@@ -208,6 +260,9 @@ public class CableSerialPort {
             usbIoManager.start();
             Log.d(TAG, "串口打开成功！");
             connected = true;
+            if (isTrUSDX()) {
+                TrUSDXDiagnostics.connected();
+            }
 
             if (onStateChanged!=null){
                 onStateChanged.onConnected();
@@ -216,6 +271,9 @@ public class CableSerialPort {
 
         } catch (Exception e) {
             Log.e(TAG, "串口打开失败: " + e.getMessage());
+            if (isTrUSDX()) {
+                TrUSDXDiagnostics.exception("USB serial connection failed", e);
+            }
             if (onStateChanged!=null){
                 onStateChanged.onRunError(GeneralVariables.getStringFromResource(R.string.serial_connect_failed)
                         + e.getMessage());
@@ -230,15 +288,30 @@ public class CableSerialPort {
         try {
             EnumSet<UsbSerialPort.ControlLine> controlLines =
                     usbSerialPort.getSupportedControlLines();
-            if (controlLines.contains(UsbSerialPort.ControlLine.DTR)) {
+            boolean dtrSupported = controlLines.contains(UsbSerialPort.ControlLine.DTR);
+            boolean rtsSupported = controlLines.contains(UsbSerialPort.ControlLine.RTS);
+            Boolean dtrActual = null;
+            Boolean rtsActual = null;
+            if (dtrSupported) {
                 usbSerialPort.setDTR(true);
+                try {
+                    dtrActual = usbSerialPort.getDTR();
+                } catch (UnsupportedOperationException ignored) {
+                }
             }
-            if (controlLines.contains(UsbSerialPort.ControlLine.RTS)) {
+            if (rtsSupported) {
                 usbSerialPort.setRTS(false);
+                try {
+                    rtsActual = usbSerialPort.getRTS();
+                } catch (UnsupportedOperationException ignored) {
+                }
             }
+            TrUSDXDiagnostics.controlLines(
+                    dtrSupported, dtrActual, rtsSupported, rtsActual);
             Log.i(TAG, "(tr)uSDX serial control lines configured: DTR=high, RTS=low");
         } catch (IOException | UnsupportedOperationException e) {
             Log.w(TAG, "Unable to configure (tr)uSDX DTR/RTS: " + e.getMessage());
+            TrUSDXDiagnostics.exception("Unable to configure DTR/RTS", e);
         }
     }
 
@@ -246,14 +319,24 @@ public class CableSerialPort {
         if (usbSerialPort != null) {
             try {
                 usbSerialPort.write(src, SEND_TIMEOUT);
+                if (isTrUSDX()) {
+                    TrUSDXDiagnostics.transmitted(src);
+                }
             } catch (IOException e) {
                 e.printStackTrace();
                 Log.e(TAG, "发送数据出错：" + e.getMessage());
+                if (isTrUSDX()) {
+                    TrUSDXDiagnostics.transmitError(src, e);
+                }
                 return false;
             }
             return true;
         } else {
             Log.e(TAG, "无法发送数据，串口没有打开。");
+            if (isTrUSDX()) {
+                TrUSDXDiagnostics.error("TX attempted while USB serial port was not open: "
+                        + new String(src, StandardCharsets.US_ASCII));
+            }
             return false;
         }
 
@@ -261,6 +344,9 @@ public class CableSerialPort {
 
     public void disconnect() {
         connected = false;
+        if (isTrUSDX()) {
+            TrUSDXDiagnostics.disconnected();
+        }
         if (onStateChanged!=null){
             onStateChanged.onDisconnected();
         }
@@ -323,6 +409,10 @@ public class CableSerialPort {
 
     public void setOnStateChanged(OnConnectorStateChanged onStateChanged) {
         this.onStateChanged = onStateChanged;
+    }
+
+    private boolean isTrUSDX() {
+        return GeneralVariables.instructionSet == InstructionSet.TRUSDX;
     }
 
     public int getVendorId() {

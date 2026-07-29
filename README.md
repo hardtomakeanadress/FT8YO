@@ -1,8 +1,8 @@
 # FT8YO — fixed (tr)uSDX Android app
 
-## [⬇️ DOWNLOAD THE FIXED FT8YO APK (OFFICIAL USB FIX 4)](https://raw.githubusercontent.com/hardtomakeanadress/FT8YO/main/downloads/FT8YO-0.93-trUSDX-official-USB-fix4-debug.apk)
+## [⬇️ DOWNLOAD FT8YO USB DIAGNOSTIC FIX 5](https://raw.githubusercontent.com/hardtomakeanadress/FT8YO/main/downloads/FT8YO-0.93-trUSDX-diagnostic-fix5-debug.apk)
 
-Fixed build: `FT8YO-0.93-trUSDX-official-USB-fix4-debug.apk`
+Fixed build: `FT8YO-0.93-trUSDX-diagnostic-fix5-debug.apk`
 
 This version applies the official `(tr)uSDX` USB serial requirements: 115200
 baud, 8N1, DTR high, RTS low, and the documented `UA2;` speaker-off streaming
@@ -12,6 +12,12 @@ includes the fragmented stream-marker fix.
 USB audio over CAT requires `(tr)uSDX` firmware 2.00u or newer. This build
 installs alongside the original FT8CN app and updates either earlier FT8YO fix
 build.
+
+This diagnostic build records the USB device and driver, permission flow,
+serial settings and control-line readback, CAT commands and reply previews,
+stream markers, audio byte counts, resampler delivery, and exceptions. Let it
+receive for at least 15 seconds, open **Settings**, then tap
+**Share USB diagnostic** to attach the generated text report to an issue.
 
 ---
 

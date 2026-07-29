@@ -1,6 +1,6 @@
 # FT8YO fixed Android app
 
-Download **FT8YO-0.93-trUSDX-official-USB-fix4-debug.apk** from this directory.
+Download **FT8YO-0.93-trUSDX-diagnostic-fix5-debug.apk** from this directory.
 
 This build enforces the official `(tr)uSDX` USB serial settings: 115200 baud,
 8N1, DTR high, RTS low, and the documented `UA2;` speaker-off streaming
@@ -11,8 +11,13 @@ FT8CN app.
 
 USB audio over CAT requires `(tr)uSDX` firmware 2.00u or newer.
 
+The app now creates a timestamped USB/CAT trace and automatically categorizes
+where receive failed. After leaving receive running for at least 15 seconds,
+open **Settings** and tap **Share USB diagnostic** to share the generated text
+report.
+
 SHA-256:
 
 ```text
-bd0b81ef7b8fb3e7e2f80effc837212c8159a406d35b2c961c3abe7eaddc21b9
+cfc63a77bc5b47bb62d06cb8100008aa53ff2f5ab5166fc89742e18c8d150bd1
 ```

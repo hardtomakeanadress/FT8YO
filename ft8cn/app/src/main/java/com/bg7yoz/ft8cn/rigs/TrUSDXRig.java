@@ -54,6 +54,7 @@ public class TrUSDXRig extends BaseRig {
         public void onAudio(byte[] data, boolean force) {
             if (data.length > 0) {
                 lastAudioReceivedAt = System.currentTimeMillis();
+                TrUSDXDiagnostics.audio(data);
             }
             onReceivedWaveData(data, force);
         }
@@ -91,6 +92,7 @@ public class TrUSDXRig extends BaseRig {
 
                 } catch (Exception e) {
                     Log.e(TAG, "readFreq error:" + e.getMessage());
+                    TrUSDXDiagnostics.exception("periodic stream/frequency task failed", e);
                 }
             }
         };
@@ -166,11 +168,19 @@ public class TrUSDXRig extends BaseRig {
     }
 
     private void handleCommand(byte[] commandData) {
+        String rawCommand = new String(commandData, StandardCharsets.US_ASCII);
+        if (rawCommand.startsWith("US")) {
+            TrUSDXDiagnostics.parsedCommand(commandData);
+        }
         Yaesu3Command command = Yaesu3Command.getCommand(
-                new String(commandData, StandardCharsets.US_ASCII));
+                rawCommand);
         if (command == null) {
+            if (!rawCommand.startsWith("US")) {
+                TrUSDXDiagnostics.unknownCommand(commandData);
+            }
             return;
         }
+        TrUSDXDiagnostics.parsedCommand(commandData);
 
         String commandId = command.getCommandID();
         if (commandId.equalsIgnoreCase("FA")) {//频率
@@ -266,10 +276,12 @@ public class TrUSDXRig extends BaseRig {
 
         rxStreamBuffer.write(data, 0, data.length);
         if (rxStreamBuffer.size() >= 256 || force) {//8位转16位，7812Hz转12000Hz
+            int inputBytes = rxStreamBuffer.size();
             //byte[] resampled = rxResample.processCopy(toWaveSamples8To16(rxStreamBuffer.toByteArray()));
             float[] resampled = FT8Resample.get32Resample16(
                     toWaveSamples8To16Int(rxStreamBuffer.toByteArray()), rxSampling, 12000, 1);
             rxStreamBuffer.reset();
+            TrUSDXDiagnostics.resampled(inputBytes, resampled.length);
             getConnector().receiveWaveData(resampled);
         }
         //rxResample.close();

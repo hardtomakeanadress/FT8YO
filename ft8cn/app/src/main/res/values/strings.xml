@@ -553,4 +553,5 @@
     <string name="alc_switch_on" translatable="false">ALC On</string>
     <string name="alc_switch_off" translatable="false">ALC Off</string>
 
+    <string name="share_usb_diagnostic">Share USB diagnostic</string>
 </resources>

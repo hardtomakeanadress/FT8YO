@@ -2089,7 +2089,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/about_me"
-            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintBottom_toTopOf="@+id/shareUsbDiagnosticButton"
             app:layout_constraintEnd_toStartOf="@+id/faqButton"
             app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintStart_toStartOf="parent" />
@@ -2106,6 +2106,15 @@
             app:layout_constraintStart_toEndOf="@+id/aboutButton"
             app:layout_constraintTop_toTopOf="@+id/aboutButton" />
 
+        <Button
+            android:id="@+id/shareUsbDiagnosticButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/share_usb_diagnostic"
+            android:textSize="12sp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>
