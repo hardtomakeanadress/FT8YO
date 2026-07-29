@@ -1,8 +1,8 @@
 # FT8YO — fixed (tr)uSDX Android app
 
-## [⬇️ DOWNLOAD FT8YO (tr)uSDX STAGED-RX FIX 10](https://raw.githubusercontent.com/hardtomakeanadress/FT8YO/main/downloads/FT8YO-0.93-trUSDX-staged-rx-fix10-debug.apk)
+## [⬇️ DOWNLOAD FT8YO (tr)uSDX TIMED-RX FIX 11](https://raw.githubusercontent.com/hardtomakeanadress/FT8YO/main/downloads/FT8YO-0.93-trUSDX-timed-rx-fix11-debug.apk)
 
-Fixed build: `FT8YO-0.93-trUSDX-staged-rx-fix10-debug.apk`
+Fixed build: `FT8YO-0.93-trUSDX-timed-rx-fix11-debug.apk`
 
 This version applies the official `(tr)uSDX` USB serial requirements: 115200
 baud, 8N1, DTR high, RTS low, and the documented `UA2;` speaker-off streaming
@@ -24,9 +24,10 @@ malformed `;RX;` command and an `FA;` query every two seconds, repeatedly
 interrupting CAT audio and starving the decoder. Receive now leaves the stream
 continuous and only restarts it after a real radio-setting change.
 
-Fix 10 uses the post-transmit reports to restore the radio's proven standalone
-`RX` recovery command. It repeats that command only while real receive samples
-are absent and stops immediately when audio resumes.
+Fix 11 follows the working `(tr)uSDX` Linux audio driver's transmit shutdown:
+it leaves 100 ms for the serial audio buffer to drain, then sends three
+back-to-back `RX` commands. Recovery retries stop immediately when real audio
+resumes.
 
 ---
 

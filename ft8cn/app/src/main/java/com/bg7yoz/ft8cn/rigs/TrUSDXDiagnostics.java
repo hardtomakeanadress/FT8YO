@@ -179,6 +179,10 @@ public final class TrUSDXDiagnostics {
         event("TX AUDIO", "cancelled before RX command; unsent=" + unsentBytes + " B");
     }
 
+    public static synchronized void transmitAudioCompleted() {
+        event("TX AUDIO", "final audio byte handed to USB");
+    }
+
     public static synchronized void receiveRecovery(String action) {
         event("RX RECOVERY", safe(action));
     }

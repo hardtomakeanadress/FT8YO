@@ -35,4 +35,11 @@ public class TrUSDXCommandTest {
                 KenwoodTK90RigConstant.setTrUSDXPTTState(false));
     }
 
+    @Test
+    public void receiveRecoveryMatchesWorkingTripleRxDriverSequence() {
+        assertArrayEquals(
+                ";RX;;RX;;RX;".getBytes(StandardCharsets.US_ASCII),
+                KenwoodTK90RigConstant.recoverTrUSDXReceive());
+    }
+
 }

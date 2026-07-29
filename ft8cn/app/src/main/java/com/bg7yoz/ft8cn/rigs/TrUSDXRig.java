@@ -12,6 +12,7 @@ import static com.bg7yoz.ft8cn.GeneralVariables.QUERY_FREQ_TIMEOUT;
 import static com.bg7yoz.ft8cn.GeneralVariables.START_QUERY_FREQ_DELAY;
 
 import android.os.Handler;
+import android.os.SystemClock;
 import android.util.Log;
 
 import com.bg7yoz.ft8cn.Ft8Message;
@@ -39,6 +40,7 @@ public class TrUSDXRig extends BaseRig {
     private static final int rxSampling = 7812;
     private static final int txSampling = 11520;
     private static final long STREAM_RETRY_MILLIS = 2000;
+    private static final long TX_TO_RX_DRAIN_MILLIS = 100;
     private final TrUSDXStreamParser streamParser = new TrUSDXStreamParser();
     private final ByteArrayOutputStream rxStreamBuffer = new ByteArrayOutputStream();
     private volatile boolean connectionSeen = false;
@@ -120,10 +122,10 @@ public class TrUSDXRig extends BaseRig {
             // actual audio is absent so it cannot fragment a healthy receive stream.
             streamParser.reset();
             rxStreamBuffer.reset();
-            getConnector().sendData(KenwoodTK90RigConstant.setTrUSDXPTTState(false));
+            getConnector().sendData(KenwoodTK90RigConstant.recoverTrUSDXReceive());
             receiveRecoveryAttempts++;
             TrUSDXDiagnostics.receiveRecovery(
-                    "standalone RX retry " + receiveRecoveryAttempts);
+                    "triple RX retry " + receiveRecoveryAttempts);
             lastStreamRequestAt = now;
         }
     }
@@ -137,13 +139,6 @@ public class TrUSDXRig extends BaseRig {
             }
         }
         super.setPTT(on);
-        if (!on) {
-            // Mark PTT off first so the writer cancels, then wait until no binary audio can
-            // follow the RX command and be misinterpreted as CAT data.
-            synchronized (transmitAudioLock) {
-                // Lock acquisition is the required barrier.
-            }
-        }
         if (getConnector() != null) {
             switch (getControlMode()) {
                 case ControlMode.CAT:
@@ -152,14 +147,22 @@ public class TrUSDXRig extends BaseRig {
                         getConnector().setPttOn(
                                 KenwoodTK90RigConstant.setTrUSDXPTTState(true));
                     } else {
-                        streamParser.reset();
-                        rxStreamBuffer.reset();
-                        getConnector().setPttOn(
-                                KenwoodTK90RigConstant.setTrUSDXPTTState(false));
-                        markReceiveStreamForRestart();
-                        lastStreamRequestAt = System.currentTimeMillis();
-                        TrUSDXDiagnostics.receiveRecovery(
-                                "post-TX standalone RX");
+                        // Mark PTT off first so the writer cancels, then keep the lock
+                        // through the drain interval and RX command. A new TX cannot race
+                        // ahead of receive recovery.
+                        synchronized (transmitAudioLock) {
+                            // The working (tr)uSDX host driver leaves a short idle period
+                            // after the final audio byte so the radio can drain its UART.
+                            SystemClock.sleep(TX_TO_RX_DRAIN_MILLIS);
+                            streamParser.reset();
+                            rxStreamBuffer.reset();
+                            getConnector().setPttOn(
+                                    KenwoodTK90RigConstant.recoverTrUSDXReceive());
+                            markReceiveStreamForRestart();
+                            lastStreamRequestAt = System.currentTimeMillis();
+                            TrUSDXDiagnostics.receiveRecovery(
+                                    "post-TX 100ms drain + triple RX");
+                        }
                     }
                     break;
                 case ControlMode.RTS:
@@ -361,16 +364,20 @@ public class TrUSDXRig extends BaseRig {
             if (pcm8[i] == 0x3B) pcm8[i] = 0x3A; // ; to :
         }
         synchronized (transmitAudioLock) {
+            boolean completed = false;
             while (pcm8.length > 0 && isPttOn()) {
                 if (pcm8.length <= 256) {
                     getConnector().sendData(pcm8);
+                    completed = true;
                     break;
                 } else {
                     getConnector().sendData(Arrays.copyOfRange(pcm8, 0, 256));
                     pcm8 = Arrays.copyOfRange(pcm8, 256, pcm8.length);
                 }
             }
-            if (pcm8.length > 0 && !isPttOn()) {
+            if (completed) {
+                TrUSDXDiagnostics.transmitAudioCompleted();
+            } else if (pcm8.length > 0 && !isPttOn()) {
                 TrUSDXDiagnostics.transmitAudioCancelled(pcm8.length);
             }
         }

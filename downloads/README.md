@@ -1,6 +1,6 @@
 # FT8YO fixed Android app
 
-Download **FT8YO-0.93-trUSDX-staged-rx-fix10-debug.apk** from this
+Download **FT8YO-0.93-trUSDX-timed-rx-fix11-debug.apk** from this
 directory.
 
 This build enforces the official `(tr)uSDX` USB serial settings: 115200 baud,
@@ -19,11 +19,11 @@ report.
 
 The uploaded reports proved that USB audio reaches the decoder. This build
 keeps continuous receive, prevents transmit audio from continuing after an
-early stop, and repeats the radio's standalone receive command only when the
-receive stream is actually stalled after TX.
+early stop, and uses the working Linux driver's 100 ms drain interval followed
+by three back-to-back receive commands.
 
 SHA-256:
 
 ```text
-ce1aa4c95447ad9991f9b0cffba3d39f59448af83337955d154a68cbf13196cc
+8b9d5acb6f5f706b2b271c5e8510ccf91349e31863224e9d381144d23957f236
 ```
