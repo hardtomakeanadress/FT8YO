@@ -41,8 +41,12 @@ public final class TrUSDXDiagnostics {
     private static long audioBytes;
     private static long audioChunks;
     private static long resampledBlocks;
+    private static long txAudioBytes;
+    private static long txAudioChunks;
+    private static long unknownCommands;
     private static long lastRawRxLogAt;
     private static long lastAudioLogAt;
+    private static long lastTxAudioLogAt;
 
     private TrUSDXDiagnostics() {
     }
@@ -63,8 +67,12 @@ public final class TrUSDXDiagnostics {
         audioBytes = 0;
         audioChunks = 0;
         resampledBlocks = 0;
+        txAudioBytes = 0;
+        txAudioChunks = 0;
+        unknownCommands = 0;
         lastRawRxLogAt = 0;
         lastAudioLogAt = 0;
+        lastTxAudioLogAt = 0;
         event("SESSION", "app=" + BuildConfig.VERSION_NAME
                 + " android=" + Build.VERSION.RELEASE + "/SDK" + Build.VERSION.SDK_INT
                 + " phone=" + Build.MANUFACTURER + " " + Build.MODEL);
@@ -120,6 +128,17 @@ public final class TrUSDXDiagnostics {
         if (startsWith(data, "UA2;")) {
             ua2Requests++;
         }
+        if (data.length >= 64) {
+            txAudioBytes += data.length;
+            txAudioChunks++;
+            long now = System.currentTimeMillis();
+            if (txAudioChunks == 1 || now - lastTxAudioLogAt >= 5000) {
+                lastTxAudioLogAt = now;
+                event("TX AUDIO", "cumulative=" + txAudioBytes
+                        + " B in " + txAudioChunks + " chunks");
+            }
+            return;
+        }
         event("TX", data.length + " B ascii=\"" + printable(data, 48)
                 + "\" hex=" + hex(data, 24));
     }
@@ -156,8 +175,12 @@ public final class TrUSDXDiagnostics {
     }
 
     public static synchronized void unknownCommand(byte[] command) {
-        event("PARSER", "unrecognized command=\"" + printable(command, 64)
-                + "\" hex=" + hex(command, 32));
+        unknownCommands++;
+        if (unknownCommands == 1 || unknownCommands % 100 == 0) {
+            event("PARSER", "unrecognized commands=" + unknownCommands
+                    + " latest=\"" + printable(command, 64)
+                    + "\" hex=" + hex(command, 32));
+        }
     }
 
     public static synchronized void audio(byte[] data) {
@@ -235,11 +258,14 @@ public final class TrUSDXDiagnostics {
         report.append("Serial: ").append(serial).append('\n');
         report.append("Control lines: ").append(controlLines).append('\n');
         report.append("TX bytes: ").append(txBytes)
-                .append(" | UA2 requests: ").append(ua2Requests).append('\n');
+                .append(" | UA2 requests: ").append(ua2Requests)
+                .append(" | audio bytes: ").append(txAudioBytes)
+                .append(" | audio chunks: ").append(txAudioChunks).append('\n');
         report.append("RX bytes: ").append(rxBytes)
                 .append(" | callbacks: ").append(rxCallbacks)
                 .append(" | CAT replies: ").append(catReplies)
-                .append(" | US markers: ").append(streamMarkers).append('\n');
+                .append(" | US markers: ").append(streamMarkers)
+                .append(" | unrecognized: ").append(unknownCommands).append('\n');
         report.append("Audio bytes: ").append(audioBytes)
                 .append(" | chunks: ").append(audioChunks)
                 .append(" | resampled blocks: ").append(resampledBlocks).append('\n');

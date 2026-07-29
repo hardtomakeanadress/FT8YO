@@ -1,8 +1,8 @@
 # FT8YO — fixed (tr)uSDX Android app
 
-## [⬇️ DOWNLOAD FT8YO CONTINUOUS-AUDIO FIX 6](https://raw.githubusercontent.com/hardtomakeanadress/FT8YO/main/downloads/FT8YO-0.93-trUSDX-continuous-audio-fix6-debug.apk)
+## [⬇️ DOWNLOAD FT8YO (tr)uSDX RX/TX FIX 7](https://raw.githubusercontent.com/hardtomakeanadress/FT8YO/main/downloads/FT8YO-0.93-trUSDX-rx-tx-fix7-debug.apk)
 
-Fixed build: `FT8YO-0.93-trUSDX-continuous-audio-fix6-debug.apk`
+Fixed build: `FT8YO-0.93-trUSDX-rx-tx-fix7-debug.apk`
 
 This version applies the official `(tr)uSDX` USB serial requirements: 115200
 baud, 8N1, DTR high, RTS low, and the documented `UA2;` speaker-off streaming

@@ -22,9 +22,9 @@ public class TrUSDXCommandTest {
     }
 
     @Test
-    public void pttOnDoesNotSendAnEmptyCommandBeforeTx() {
+    public void pttOnTerminatesReceiveAudioBeforeTxCommand() {
         assertArrayEquals(
-                "TX0;".getBytes(StandardCharsets.US_ASCII),
+                ";TX0;".getBytes(StandardCharsets.US_ASCII),
                 KenwoodTK90RigConstant.setTrUSDXPTTState(true));
     }
 

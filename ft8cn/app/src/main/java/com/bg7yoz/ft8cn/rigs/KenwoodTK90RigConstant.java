@@ -169,7 +169,7 @@ public class KenwoodTK90RigConstant {
 
     public static byte[] setTrUSDXPTTState(boolean on) {
         if (on) {
-            return "TX0;".getBytes();
+            return ";TX0;".getBytes();
         } else {
             return ";RX;".getBytes();
         }
