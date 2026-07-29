@@ -41,6 +41,8 @@ android {
     buildTypes {
 
         debug{
+            applicationIdSuffix ".trusdxfix"
+            versionNameSuffix "-trusdx-fix"
             buildConfigField("String", "apkBuildTime", "\"${currentTime}\"")
         }
         release {
@@ -70,6 +72,8 @@ android {
 }
 
 dependencies {
+
+    testImplementation 'junit:junit:4.13.2'
 
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.8.0'

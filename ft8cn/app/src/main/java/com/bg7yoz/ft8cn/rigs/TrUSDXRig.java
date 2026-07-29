@@ -25,6 +25,7 @@ import com.bg7yoz.ft8cn.wave.FT8Resample;
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -37,15 +38,25 @@ public class TrUSDXRig extends BaseRig {
     private static final String TAG = "TrUSDXRig";
     private static final int rxSampling = 7812;
     private static final int txSampling = 11520;
-    private final StringBuilder buffer = new StringBuilder();
+    private final TrUSDXStreamParser streamParser = new TrUSDXStreamParser();
     private final ByteArrayOutputStream rxStreamBuffer = new ByteArrayOutputStream();
+    private final TrUSDXStreamParser.Listener streamListener = new TrUSDXStreamParser.Listener() {
+        @Override
+        public void onCommand(byte[] command) {
+            handleCommand(command);
+        }
+
+        @Override
+        public void onAudio(byte[] data, boolean force) {
+            onReceivedWaveData(data, force);
+        }
+    };
 
     private Timer readFreqTimer = new Timer();
     private int swr = 0;
     private int alc = 0;
     private boolean alcMaxAlert = false;
     private boolean swrAlert = false;
-    private boolean rxStreaming = false;
 
     private TimerTask readTask() {
         return new TimerTask() {
@@ -75,7 +86,7 @@ public class TrUSDXRig extends BaseRig {
      * 清空缓存数据
      */
     private void clearBufferData() {
-        buffer.setLength(0);
+        streamParser.clearCommandBuffer();
     }
 
     @Override
@@ -85,7 +96,7 @@ public class TrUSDXRig extends BaseRig {
             switch (getControlMode()) {
                 case ControlMode.CAT:
                     if (on) {
-                        rxStreaming = false;
+                        streamParser.stopStreaming();
                     }
                     getConnector().setPttOn(KenwoodTK90RigConstant.setTrUSDXPTTState(on));
                     break;
@@ -121,52 +132,25 @@ public class TrUSDXRig extends BaseRig {
 
     @Override
     public void onReceiveData(byte[] data) {
-        byte[] remain = data;
-        String s = new String(data);
-        while (s.contains(";")) { // ;
-            // TODO apply effective way
-            int idx = s.indexOf(";");
-            byte[] cutted = Arrays.copyOf(remain, idx);
-            remain = Arrays.copyOfRange(remain, idx + 1, remain.length);
-            s = new String(remain);
-
-            if (rxStreaming) {
-                onReceivedWaveData(cutted, true);
-                rxStreaming = false;
-            } else {
-                buffer.append(new String(cutted));
-                //开始分析数据
-                Yaesu3Command yaesu3Command = Yaesu3Command.getCommand(buffer.toString());
-                clearBufferData();//清一下缓存
-
-                if (yaesu3Command == null) {
-                    continue;
-                }
-                String cmd = yaesu3Command.getCommandID();
-                if (cmd.equalsIgnoreCase("FA")) {//频率
-                    long tempFreq = Yaesu3Command.getFrequency(yaesu3Command);
-                    if (tempFreq != 0) {//如果tempFreq==0，说明频率不正常
-                        setFreq(Yaesu3Command.getFrequency(yaesu3Command));
-                    }
-                } else if (cmd.equalsIgnoreCase("US")) {
-                    rxStreaming = true;
-                    byte[] wave = Arrays.copyOfRange(cutted, 2, cutted.length);
-                    onReceivedWaveData(wave);
-                }
-            }
-        }
-        if (remain.length <= 0) {
+        if (data == null || data.length == 0) {
             return;
         }
-        if (rxStreaming) {
-            onReceivedWaveData(remain);
-        } else if (remain.length >= 2 && remain[0] == 0x55 && remain[1] == 0x53) {// US
-            clearBufferData();
-            rxStreaming = true;
-            byte[] wave = Arrays.copyOfRange(remain, 2, remain.length);
-            onReceivedWaveData(wave);
-        } else {
-            buffer.append(s);
+        streamParser.accept(data, streamListener);
+    }
+
+    private void handleCommand(byte[] commandData) {
+        Yaesu3Command command = Yaesu3Command.getCommand(
+                new String(commandData, StandardCharsets.US_ASCII));
+        if (command == null) {
+            return;
+        }
+
+        String commandId = command.getCommandID();
+        if (commandId.equalsIgnoreCase("FA")) {//频率
+            long tempFreq = Yaesu3Command.getFrequency(command);
+            if (tempFreq != 0) {//如果tempFreq==0，说明频率不正常
+                setFreq(tempFreq);
+            }
         }
     }
 
@@ -195,7 +179,6 @@ public class TrUSDXRig extends BaseRig {
     @Override
     public void readFreqFromRig() {
         if (getConnector() != null) {
-            clearBufferData();//清空一下缓存
             // force reset
             getConnector().sendData(KenwoodTK90RigConstant.setTrUSDXPTTState(false));
             getConnector().sendData(KenwoodTK90RigConstant.setTS590ReadOperationFreq());
@@ -215,7 +198,7 @@ public class TrUSDXRig extends BaseRig {
     @Override
     public void onDisconnecting() {
         if (getConnector() != null) {
-            clearBufferData();
+            streamParser.reset();
             getConnector().sendData(KenwoodTK90RigConstant.setTrUSDXStreaming(false));
         }
     }
