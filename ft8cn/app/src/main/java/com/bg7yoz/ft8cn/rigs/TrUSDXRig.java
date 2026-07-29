@@ -44,6 +44,7 @@ public class TrUSDXRig extends BaseRig {
     private volatile boolean connectionSeen = false;
     private volatile long lastAudioReceivedAt = 0;
     private volatile long lastStreamRequestAt = 0;
+    private final Object transmitAudioLock = new Object();
     private final TrUSDXStreamParser.Listener streamListener = new TrUSDXStreamParser.Listener() {
         @Override
         public void onCommand(byte[] command) {
@@ -119,7 +120,20 @@ public class TrUSDXRig extends BaseRig {
 
     @Override
     public void setPTT(boolean on) {
+        if (on) {
+            // Do not start a new transmission until any previous audio writer has exited.
+            synchronized (transmitAudioLock) {
+                // Lock acquisition is the required barrier.
+            }
+        }
         super.setPTT(on);
+        if (!on) {
+            // Mark PTT off first so the writer cancels, then wait until no binary audio can
+            // follow the RX command and be misinterpreted as CAT data.
+            synchronized (transmitAudioLock) {
+                // Lock acquisition is the required barrier.
+            }
+        }
         if (getConnector() != null) {
             switch (getControlMode()) {
                 case ControlMode.CAT:
@@ -316,18 +330,24 @@ public class TrUSDXRig extends BaseRig {
 //        byte[] pcm8 = toWaveSamples16To8(resampled);
 
         byte[] pcm8 = FT8Resample.get8Resample32(wave, 24000, txSampling, 1);
+        TrUSDXDiagnostics.transmitAudioPrepared(pcm8, GeneralVariables.volumePercent);
 
 
         for (int i = 0; i < pcm8.length; i++) {
             if (pcm8[i] == 0x3B) pcm8[i] = 0x3A; // ; to :
         }
-        while (pcm8.length > 0) {
-            if (pcm8.length <= 256) {
-                getConnector().sendData(pcm8);
-                break;
-            } else {
-                getConnector().sendData(Arrays.copyOfRange(pcm8, 0, 256));
-                pcm8 = Arrays.copyOfRange(pcm8, 256, pcm8.length);
+        synchronized (transmitAudioLock) {
+            while (pcm8.length > 0 && isPttOn()) {
+                if (pcm8.length <= 256) {
+                    getConnector().sendData(pcm8);
+                    break;
+                } else {
+                    getConnector().sendData(Arrays.copyOfRange(pcm8, 0, 256));
+                    pcm8 = Arrays.copyOfRange(pcm8, 256, pcm8.length);
+                }
+            }
+            if (pcm8.length > 0 && !isPttOn()) {
+                TrUSDXDiagnostics.transmitAudioCancelled(pcm8.length);
             }
         }
     }

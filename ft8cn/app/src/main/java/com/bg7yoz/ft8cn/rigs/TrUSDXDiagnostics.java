@@ -44,6 +44,7 @@ public final class TrUSDXDiagnostics {
     private static long txAudioBytes;
     private static long txAudioChunks;
     private static long unknownCommands;
+    private static String txAudioLevel = "not generated";
     private static long lastRawRxLogAt;
     private static long lastAudioLogAt;
     private static long lastTxAudioLogAt;
@@ -70,6 +71,7 @@ public final class TrUSDXDiagnostics {
         txAudioBytes = 0;
         txAudioChunks = 0;
         unknownCommands = 0;
+        txAudioLevel = "not generated";
         lastRawRxLogAt = 0;
         lastAudioLogAt = 0;
         lastTxAudioLogAt = 0;
@@ -145,6 +147,36 @@ public final class TrUSDXDiagnostics {
 
     public static synchronized void transmitError(byte[] data, Exception error) {
         exception("TX failed for \"" + printable(data, 32) + "\"", error);
+    }
+
+    public static synchronized void transmitAudioPrepared(byte[] data, float volume) {
+        if (data == null || data.length == 0) {
+            txAudioLevel = "empty";
+            event("TX AUDIO", "generated audio buffer is empty");
+            return;
+        }
+        int minimum = 255;
+        int maximum = 0;
+        long absoluteFromCenter = 0;
+        long squareFromCenter = 0;
+        for (byte sample : data) {
+            int unsigned = sample & 0xff;
+            minimum = Math.min(minimum, unsigned);
+            maximum = Math.max(maximum, unsigned);
+            int centered = unsigned - 128;
+            absoluteFromCenter += Math.abs(centered);
+            squareFromCenter += (long) centered * centered;
+        }
+        double meanAbsolute = absoluteFromCenter / (double) data.length;
+        double rms = Math.sqrt(squareFromCenter / (double) data.length);
+        txAudioLevel = String.format(Locale.US,
+                "app volume=%.0f%% samples=%d min=%d max=%d meanAbs=%.1f rms=%.1f",
+                volume * 100f, data.length, minimum, maximum, meanAbsolute, rms);
+        event("TX AUDIO", "prepared " + txAudioLevel);
+    }
+
+    public static synchronized void transmitAudioCancelled(int unsentBytes) {
+        event("TX AUDIO", "cancelled before RX command; unsent=" + unsentBytes + " B");
     }
 
     public static synchronized void received(byte[] data) {
@@ -261,6 +293,7 @@ public final class TrUSDXDiagnostics {
                 .append(" | UA2 requests: ").append(ua2Requests)
                 .append(" | audio bytes: ").append(txAudioBytes)
                 .append(" | audio chunks: ").append(txAudioChunks).append('\n');
+        report.append("TX audio level: ").append(txAudioLevel).append('\n');
         report.append("RX bytes: ").append(rxBytes)
                 .append(" | callbacks: ").append(rxCallbacks)
                 .append(" | CAT replies: ").append(catReplies)

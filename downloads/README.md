@@ -1,6 +1,6 @@
 # FT8YO fixed Android app
 
-Download **FT8YO-0.93-trUSDX-rx-tx-fix7-debug.apk** from this
+Download **FT8YO-0.93-trUSDX-safe-tx-fix8-debug.apk** from this
 directory.
 
 This build enforces the official `(tr)uSDX` USB serial settings: 115200 baud,
@@ -18,11 +18,11 @@ open **Settings** and tap **Share USB diagnostic** to share the generated text
 report.
 
 The uploaded reports proved that USB audio reaches the decoder. This build
-keeps the continuous receive stream from fix 6 and restores the original
-`;TX0;` framing needed to terminate receive audio before starting transmit.
+keeps continuous receive, prevents transmit audio from continuing after an
+early stop, and records the generated transmit level in the diagnostic report.
 
 SHA-256:
 
 ```text
-63dfeff3a013353a0911091fdfb2e3d1fa27eae6f622317d1ccac6bb6fdbd8bb
+5ee796fffcacf3714c0f9720fc326b20c41ace9f53f53842ca8eca29172bf195
 ```
