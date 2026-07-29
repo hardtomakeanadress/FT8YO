@@ -38,8 +38,12 @@ public class TrUSDXRig extends BaseRig {
     private static final String TAG = "TrUSDXRig";
     private static final int rxSampling = 7812;
     private static final int txSampling = 11520;
+    private static final long STREAM_RETRY_MILLIS = 2000;
     private final TrUSDXStreamParser streamParser = new TrUSDXStreamParser();
     private final ByteArrayOutputStream rxStreamBuffer = new ByteArrayOutputStream();
+    private volatile boolean connectionSeen = false;
+    private volatile long lastAudioReceivedAt = 0;
+    private volatile long lastStreamRequestAt = 0;
     private final TrUSDXStreamParser.Listener streamListener = new TrUSDXStreamParser.Listener() {
         @Override
         public void onCommand(byte[] command) {
@@ -48,6 +52,9 @@ public class TrUSDXRig extends BaseRig {
 
         @Override
         public void onAudio(byte[] data, boolean force) {
+            if (data.length > 0) {
+                lastAudioReceivedAt = System.currentTimeMillis();
+            }
             onReceivedWaveData(data, force);
         }
     };
@@ -64,14 +71,21 @@ public class TrUSDXRig extends BaseRig {
             public void run() {
                 try {
                     if (!isConnected()) {
-                        readFreqTimer.cancel();
-                        readFreqTimer.purge();
-                        readFreqTimer = null;
+                        // USB permission and port opening can take longer than the initial
+                        // two-second delay. Keep the timer alive so stream startup is retried
+                        // after the connector actually becomes ready.
+                        if (connectionSeen && readFreqTimer != null) {
+                            readFreqTimer.cancel();
+                            readFreqTimer.purge();
+                            readFreqTimer = null;
+                        }
                         return;
                     }
+                    connectionSeen = true;
                     if (isPttOn()) {
                         clearBufferData();
                     } else {
+                        requestReceiveStreamingIfNeeded();
                         readFreqFromRig();//读频率
                     }
 
@@ -87,6 +101,19 @@ public class TrUSDXRig extends BaseRig {
      */
     private void clearBufferData() {
         streamParser.clearCommandBuffer();
+    }
+
+    private void requestReceiveStreamingIfNeeded() {
+        long now = System.currentTimeMillis();
+        boolean audioIsFlowing = lastAudioReceivedAt != 0
+                && now - lastAudioReceivedAt < STREAM_RETRY_MILLIS * 2;
+        if (audioIsFlowing || now - lastStreamRequestAt < STREAM_RETRY_MILLIS) {
+            return;
+        }
+        if (getConnector() != null && getConnector().isConnected()) {
+            getConnector().sendData(KenwoodTK90RigConstant.setTrUSDXStreaming(true));
+            lastStreamRequestAt = now;
+        }
     }
 
     @Override
@@ -200,6 +227,13 @@ public class TrUSDXRig extends BaseRig {
         if (getConnector() != null) {
             streamParser.reset();
             getConnector().sendData(KenwoodTK90RigConstant.setTrUSDXStreaming(false));
+        }
+        lastAudioReceivedAt = 0;
+        lastStreamRequestAt = 0;
+        if (readFreqTimer != null) {
+            readFreqTimer.cancel();
+            readFreqTimer.purge();
+            readFreqTimer = null;
         }
     }
 
@@ -365,6 +399,7 @@ public class TrUSDXRig extends BaseRig {
                     //改成设置usb模式
                     getConnector().sendData(KenwoodTK90RigConstant.setTS590OperationUSBMode());
                     getConnector().sendData(KenwoodTK90RigConstant.setTrUSDXStreaming(true));
+                    lastStreamRequestAt = System.currentTimeMillis();
                 }
             }
         }, START_QUERY_FREQ_DELAY - 500);

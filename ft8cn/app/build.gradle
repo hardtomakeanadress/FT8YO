@@ -21,7 +21,7 @@ android {
         applicationId "com.bg7yoz.ft8cn"
         minSdk 23
         targetSdk 33
-        versionCode 2
+        versionCode 3
         versionName '0.93'
 
 
@@ -42,7 +42,7 @@ android {
 
         debug{
             applicationIdSuffix ".trusdxfix"
-            versionNameSuffix "-trusdx-ua1-fix2"
+            versionNameSuffix "-trusdx-usb-retry-fix3"
             buildConfigField("String", "apkBuildTime", "\"${currentTime}\"")
         }
         release {
