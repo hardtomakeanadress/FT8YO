@@ -1,0 +1,55 @@
+name: Create trUSDX diagnostic issue
+
+on:
+  push:
+    branches:
+      - automation/create-trusdx-diagnostic-issue
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create issue if it does not exist
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = "(tr)uSDX still reports 2 > 1 — phone screenshots and diagnostics";
+            const body = `## Problem
+
+The FT8YO build still shows the \`2 > 1\` error while using a (tr)uSDX radio. Please upload the phone screenshots here so the exact failing state can be identified.
+
+## Please attach
+
+- A screenshot of the complete error message
+- A screenshot showing the app version (Settings/About, if available)
+- A screenshot of the radio/rig configuration
+- Whether the installed app is named FT8CN or the side-by-side FT8CN trUSDX fix build
+- Phone model and Android version
+- Connection type: USB or Bluetooth
+- What action immediately triggers the error
+
+## Fix currently under test
+
+Commit faf17e94f6d80a326c2568fe05455778c9bf6df7 adds fragmented stream-marker handling for (tr)uSDX and tests for split and malformed input. The debug build uses package \`com.bg7yoz.ft8cn.trusdxfix\`, so it can be installed alongside the original app.
+
+Drag the phone pictures directly into a comment below.`;
+
+            const existing = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "all",
+              per_page: 100
+            });
+
+            if (!existing.some(issue => issue.title === title)) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body
+              });
+            }
