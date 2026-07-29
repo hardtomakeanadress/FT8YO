@@ -8,9 +8,9 @@ import java.nio.charset.StandardCharsets;
 
 public class TrUSDXCommandTest {
     @Test
-    public void streamingUsesPortableUa1EnableCommand() {
+    public void streamingUsesOfficialSpeakerOffEnableCommand() {
         assertArrayEquals(
-                "UA1;".getBytes(StandardCharsets.US_ASCII),
+                "UA2;".getBytes(StandardCharsets.US_ASCII),
                 KenwoodTK90RigConstant.setTrUSDXStreaming(true));
     }
 

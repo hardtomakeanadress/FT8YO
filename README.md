@@ -1,13 +1,17 @@
 # FT8YO — fixed (tr)uSDX Android app
 
-## [⬇️ DOWNLOAD THE FIXED FT8YO APK (USB FIX 3)](https://raw.githubusercontent.com/hardtomakeanadress/FT8YO/main/downloads/FT8YO-0.93-trUSDX-USB-retry-fix3-debug.apk)
+## [⬇️ DOWNLOAD THE FIXED FT8YO APK (OFFICIAL USB FIX 4)](https://raw.githubusercontent.com/hardtomakeanadress/FT8YO/main/downloads/FT8YO-0.93-trUSDX-official-USB-fix4-debug.apk)
 
-Fixed build: `FT8YO-0.93-trUSDX-USB-retry-fix3-debug.apk`
+Fixed build: `FT8YO-0.93-trUSDX-official-USB-fix4-debug.apk`
 
-This version enables receive streaming with the firmware-compatible `UA1;`
-command, retries USB streaming after permission/connection startup, and includes
-the fragmented `(tr)uSDX` stream-marker fix. It installs alongside the original
-FT8CN app and updates either earlier FT8YO fix build.
+This version applies the official `(tr)uSDX` USB serial requirements: 115200
+baud, 8N1, DTR high, RTS low, and the documented `UA2;` speaker-off streaming
+command. It also retries streaming after permission/connection startup and
+includes the fragmented stream-marker fix.
+
+USB audio over CAT requires `(tr)uSDX` firmware 2.00u or newer. This build
+installs alongside the original FT8CN app and updates either earlier FT8YO fix
+build.
 
 ---
 

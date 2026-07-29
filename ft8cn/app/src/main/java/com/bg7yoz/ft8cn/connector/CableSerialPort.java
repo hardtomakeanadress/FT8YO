@@ -22,6 +22,7 @@ import android.util.Log;
 import com.bg7yoz.ft8cn.BuildConfig;
 import com.bg7yoz.ft8cn.GeneralVariables;
 import com.bg7yoz.ft8cn.R;
+import com.bg7yoz.ft8cn.rigs.InstructionSet;
 import com.bg7yoz.ft8cn.serialport.CdcAcmSerialDriver;
 import com.bg7yoz.ft8cn.serialport.UsbSerialDriver;
 import com.bg7yoz.ft8cn.serialport.UsbSerialPort;
@@ -179,8 +180,15 @@ public class CableSerialPort {
                     ,baudRate,GeneralVariables.serialDataBits
                     ,GeneralVariables.serialStopBits
                     ,GeneralVariables.serialParity));
-            usbSerialPort.setParameters(baudRate, GeneralVariables.serialDataBits
-                    , GeneralVariables.serialStopBits, GeneralVariables.serialParity);
+            if (GeneralVariables.instructionSet == InstructionSet.TRUSDX) {
+                // DL2MAN's (tr)uSDX CAT-streaming specification requires
+                // 115200 baud, 8N1, DTR high and RTS low in receive.
+                usbSerialPort.setParameters(115200, 8, 1, UsbSerialPort.PARITY_NONE);
+                configureTrUSDXControlLines();
+            } else {
+                usbSerialPort.setParameters(baudRate, GeneralVariables.serialDataBits
+                        , GeneralVariables.serialStopBits, GeneralVariables.serialParity);
+            }
             usbIoManager = new SerialInputOutputManager(usbSerialPort, new SerialInputOutputManager.Listener() {
                 @Override
                 public void onNewData(byte[] data) {
@@ -216,6 +224,22 @@ public class CableSerialPort {
             return false;
         }
         return true;
+    }
+
+    private void configureTrUSDXControlLines() {
+        try {
+            EnumSet<UsbSerialPort.ControlLine> controlLines =
+                    usbSerialPort.getSupportedControlLines();
+            if (controlLines.contains(UsbSerialPort.ControlLine.DTR)) {
+                usbSerialPort.setDTR(true);
+            }
+            if (controlLines.contains(UsbSerialPort.ControlLine.RTS)) {
+                usbSerialPort.setRTS(false);
+            }
+            Log.i(TAG, "(tr)uSDX serial control lines configured: DTR=high, RTS=low");
+        } catch (IOException | UnsupportedOperationException e) {
+            Log.w(TAG, "Unable to configure (tr)uSDX DTR/RTS: " + e.getMessage());
+        }
     }
 
     public boolean sendData(final byte[] src) {
