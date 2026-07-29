@@ -1,8 +1,8 @@
 # FT8YO — fixed (tr)uSDX Android app
 
-## [⬇️ DOWNLOAD FT8YO USB DIAGNOSTIC FIX 5](https://raw.githubusercontent.com/hardtomakeanadress/FT8YO/main/downloads/FT8YO-0.93-trUSDX-diagnostic-fix5-debug.apk)
+## [⬇️ DOWNLOAD FT8YO CONTINUOUS-AUDIO FIX 6](https://raw.githubusercontent.com/hardtomakeanadress/FT8YO/main/downloads/FT8YO-0.93-trUSDX-continuous-audio-fix6-debug.apk)
 
-Fixed build: `FT8YO-0.93-trUSDX-diagnostic-fix5-debug.apk`
+Fixed build: `FT8YO-0.93-trUSDX-continuous-audio-fix6-debug.apk`
 
 This version applies the official `(tr)uSDX` USB serial requirements: 115200
 baud, 8N1, DTR high, RTS low, and the documented `UA2;` speaker-off streaming
@@ -18,6 +18,11 @@ serial settings and control-line readback, CAT commands and reply previews,
 stream markers, audio byte counts, resampler delivery, and exceptions. Let it
 receive for at least 15 seconds, open **Settings**, then tap
 **Share USB diagnostic** to attach the generated text report to an issue.
+
+Fix 6 uses the uploaded diagnostic evidence: the old receive loop sent a
+malformed `;RX;` command and an `FA;` query every two seconds, repeatedly
+interrupting CAT audio and starving the decoder. Receive now leaves the stream
+continuous and only restarts it after a real radio-setting change.
 
 ---
 

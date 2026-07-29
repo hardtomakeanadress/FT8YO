@@ -20,4 +20,18 @@ public class TrUSDXCommandTest {
                 "UA0;".getBytes(StandardCharsets.US_ASCII),
                 KenwoodTK90RigConstant.setTrUSDXStreaming(false));
     }
+
+    @Test
+    public void pttOnDoesNotSendAnEmptyCommandBeforeTx() {
+        assertArrayEquals(
+                "TX0;".getBytes(StandardCharsets.US_ASCII),
+                KenwoodTK90RigConstant.setTrUSDXPTTState(true));
+    }
+
+    @Test
+    public void pttOffTerminatesTransmitAudioBeforeRxCommand() {
+        assertArrayEquals(
+                ";RX;".getBytes(StandardCharsets.US_ASCII),
+                KenwoodTK90RigConstant.setTrUSDXPTTState(false));
+    }
 }

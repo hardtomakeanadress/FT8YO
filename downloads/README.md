@@ -1,6 +1,7 @@
 # FT8YO fixed Android app
 
-Download **FT8YO-0.93-trUSDX-diagnostic-fix5-debug.apk** from this directory.
+Download **FT8YO-0.93-trUSDX-continuous-audio-fix6-debug.apk** from this
+directory.
 
 This build enforces the official `(tr)uSDX` USB serial settings: 115200 baud,
 8N1, DTR high, RTS low, and the documented `UA2;` speaker-off streaming
@@ -16,8 +17,12 @@ where receive failed. After leaving receive running for at least 15 seconds,
 open **Settings** and tap **Share USB diagnostic** to share the generated text
 report.
 
+The uploaded fix-5 report proved that USB audio reached the decoder, but the
+old two-second `RX`/frequency poll repeatedly interrupted it. Fix 6 removes
+that poll so the decoder receives a continuous sample stream.
+
 SHA-256:
 
 ```text
-cfc63a77bc5b47bb62d06cb8100008aa53ff2f5ab5166fc89742e18c8d150bd1
+ac49664047bd452bf8b72dc3c4e89f32a2700997e3484e66ab8cd5af232cff6d
 ```

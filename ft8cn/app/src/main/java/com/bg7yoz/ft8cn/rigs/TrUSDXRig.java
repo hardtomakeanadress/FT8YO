@@ -87,7 +87,6 @@ public class TrUSDXRig extends BaseRig {
                         clearBufferData();
                     } else {
                         requestReceiveStreamingIfNeeded();
-                        readFreqFromRig();//读频率
                     }
 
                 } catch (Exception e) {
@@ -149,6 +148,7 @@ public class TrUSDXRig extends BaseRig {
     public void setUsbModeToRig() {
         if (getConnector() != null) {
             getConnector().sendData(KenwoodTK90RigConstant.setTS590OperationUSBMode());
+            markReceiveStreamForRestart();
         }
     }
 
@@ -156,6 +156,7 @@ public class TrUSDXRig extends BaseRig {
     public void setFreqToRig() {
         if (getConnector() != null) {
             getConnector().sendData(KenwoodTK90RigConstant.setTS590OperationFreq(getFreq()));
+            markReceiveStreamForRestart();
         }
     }
 
@@ -215,11 +216,13 @@ public class TrUSDXRig extends BaseRig {
 
     @Override
     public void readFreqFromRig() {
-        if (getConnector() != null) {
-            // force reset
-            getConnector().sendData(KenwoodTK90RigConstant.setTrUSDXPTTState(false));
-            getConnector().sendData(KenwoodTK90RigConstant.setTS590ReadOperationFreq());
-        }
+        // CAT commands interrupt (tr)uSDX audio. The app already knows the frequency it set,
+        // so polling it every two seconds only starves the decoder of continuous samples.
+    }
+
+    private void markReceiveStreamForRestart() {
+        lastAudioReceivedAt = 0;
+        lastStreamRequestAt = 0;
     }
 
     @Override
